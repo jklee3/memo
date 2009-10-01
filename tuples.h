@@ -1,12 +1,3 @@
-/**
- * @file
- *
- * Sentry24CMS 2.0 - Database Tuples
- *
- * Copyright (c) 2007-2009 EMSTONE, All rights reserved.
- *
- */
-
 #ifndef __TUPLES_H__
 #define __TUPLES_H__
 
