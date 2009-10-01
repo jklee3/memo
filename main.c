@@ -833,7 +833,7 @@ memo_create_window (void)
   memo_search_entry = entry;
   
   gtk_box_pack_start (GTK_BOX (search_hbox), entry, TRUE, TRUE, 0);
-
+  
   button = gtk_button_new_with_label ("   Show   ");
   gtk_widget_show (button);
   gtk_box_pack_start (GTK_BOX (search_hbox), button, FALSE, FALSE, 0);
