@@ -139,6 +139,9 @@ memo_save_main (void)
 {
   GtkTextIter start, end;
   gchar *str;
+
+  if (!memo_main_edit_buffer)
+    return;
   
   gtk_text_buffer_get_start_iter (GTK_TEXT_BUFFER (memo_main_edit_buffer),
                                   &start);
@@ -720,6 +723,8 @@ memo_combo_changed (GtkComboBox *combo, gpointer data)
   key = config_read ("menu", item);
   sscanf (key, "%08d-%06d", &_date, &_time); 
 
+  memo_save_main ();
+  
   g_snprintf (memo_sticky_date, sizeof (memo_sticky_date), "%08d", _date);
   g_snprintf (memo_sticky_time, sizeof (memo_sticky_time), "%06d", _time);
 
@@ -845,7 +850,7 @@ memo_create_window (void)
         gtk_list_store_append (store, &iter);
         gtk_list_store_set (store, &iter, 0, names[i], -1);
       }
-    g_strfreev (names);
+    //    g_strfreev (names);
     g_signal_connect (G_OBJECT (combo), "changed",
                       G_CALLBACK (memo_combo_changed), NULL);
     gtk_combo_box_set_active (GTK_COMBO_BOX (combo), 0);
