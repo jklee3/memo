@@ -14,7 +14,7 @@ CFLAGS += -Wall -Wunused
 %.o: %.c
 	gcc -c -o $@ $(CFLAGS) $<
 
-memo-manager : main.o memo-db.o tuples.o
+memo-manager : main.o memo-db.o tuples.o config.o
 	gcc -o $@ $(CFLAGS) $(LDFLAGS) $^
 
 clean:

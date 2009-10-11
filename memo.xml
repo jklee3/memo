@@ -1,0 +1,6 @@
+<?xml version="1.0" ?>
+
+<config>
+  <menu name="basic" key="00000000-000000"/> 
+  <menu name="book" key="00000000-000001"/>
+</config>

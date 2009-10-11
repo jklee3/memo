@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <gtk/gtk.h>
 #include "memo-db.h"
+#include "config.h"
 
 #define MEMO_LIST_COUNT        24 * 2
 
@@ -53,6 +54,9 @@ static GtkWidget *memo_search_entry;
 
 static gchar memo_day[9], memo_time[8];
 static GTimeVal memo_timeval;
+
+static gchar memo_sticky_date[9];
+static gchar memo_sticky_time[8];
 
 static void
 memo_get_date_info (gchar *_date, gint *year, gint *month, gint *day,
@@ -124,7 +128,9 @@ memo_set_main (gchar *data)
   
   buf = g_locale_to_utf8 (data, -1, NULL, NULL, NULL);
 
-  gtk_text_buffer_set_text (memo_main_edit_buffer, buf, -1);
+  if (memo_main_edit_buffer)
+    gtk_text_buffer_set_text (memo_main_edit_buffer, buf, -1);
+  
   g_free (buf);
 }
 
@@ -145,8 +151,9 @@ memo_save_main (void)
 
   if (!g_strcmp0 (str, ""))
     return;
-  
-  memo_db_update ("00000000", "000000", str);
+
+  memo_db_update (memo_sticky_date, memo_sticky_time, str);
+  //  memo_db_update ("00000000", "000000", str);
   g_free (str);
 }
 
@@ -402,7 +409,8 @@ memo_load_treeview (void)
     {
       datas = tuples_get (tuples, i);
 
-      if (!g_strcmp0 (datas[0], "00000000"))
+      if (!g_strcmp0 (datas[0], "00000000")
+          && !g_strcmp0 (datas[1], "000000"))
         memo_set_main (datas[2]);
       
       if (!g_strcmp0 (datas[0], memo_day))
@@ -698,6 +706,39 @@ memo_search_button_clicked (GtkButton *button, gpointer data)
   
 }
 
+static void
+memo_combo_changed (GtkComboBox *combo, gpointer data)
+{
+  
+  gchar *item, *key;
+  Tuples *tuples;
+  gchar **datas;
+  gchar sql[1024];
+  gint _date, _time;
+  
+  item = gtk_combo_box_get_active_text (combo);
+  key = config_read ("menu", item);
+  sscanf (key, "%08d-%06d", &_date, &_time); 
+
+  g_snprintf (memo_sticky_date, sizeof (memo_sticky_date), "%08d", _date);
+  g_snprintf (memo_sticky_time, sizeof (memo_sticky_time), "%06d", _time);
+
+  g_snprintf (sql, sizeof (sql), "stampDate = '%08d' AND stampTime = '%06d'",
+              _date, _time);
+  
+  tuples = memo_db_search (sql);
+  if (!tuples)
+    {
+      memo_db_insert (memo_sticky_date, memo_sticky_time, "", 0);
+      gtk_text_buffer_set_text (memo_main_edit_buffer, "", 0);
+      
+      return;
+    }
+  
+  datas = tuples_get (tuples, 0);
+  memo_set_main (datas[2]);
+  tuples_free (tuples);
+}
 
 static void
 memo_create_window (void)
@@ -709,6 +750,7 @@ memo_create_window (void)
   GtkTextBuffer *text_buffer, *main_text_buffer;
   GtkWidget *swindow, *label;
   GtkWidget *button, *entry;
+  GtkWidget *hbox, *combo;
   
   window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
   gtk_widget_set_name (window, "Memo");
@@ -768,9 +810,46 @@ memo_create_window (void)
 
   }
 
+  hbox = gtk_hbox_new (FALSE, 0);
+  gtk_widget_show (hbox);
+  gtk_box_pack_start (GTK_BOX (left_vbox), hbox, FALSE, FALSE, 0);
+  
   label = gtk_label_new ("Sticky Memo");
   gtk_widget_show (label);
-  gtk_box_pack_start (GTK_BOX (left_vbox), label, FALSE, FALSE, 0);
+  gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 0);
+
+  {
+    GtkListStore *store;
+    GtkCellRenderer *renderer;
+    GtkTreeIter iter;
+    gchar **names;
+    gint names_count, i;
+    
+    store = gtk_list_store_new (1, G_TYPE_STRING);
+    
+    combo = gtk_combo_box_new_with_model (GTK_TREE_MODEL (store));
+    gtk_widget_show (combo);
+    g_object_unref (G_OBJECT (store));
+    gtk_box_pack_end (GTK_BOX (hbox), combo, FALSE, FALSE, 0);
+
+    renderer = gtk_cell_renderer_text_new ();
+    gtk_cell_layout_pack_start (GTK_CELL_LAYOUT (combo), renderer, TRUE);
+    gtk_cell_layout_add_attribute (GTK_CELL_LAYOUT (combo),
+                                   renderer,
+                                   "text",
+                                   0);
+    
+    names = config_read_names ("menu", &names_count);
+    for (i = 0; i < names_count; i++)
+      {
+        gtk_list_store_append (store, &iter);
+        gtk_list_store_set (store, &iter, 0, names[i], -1);
+      }
+    g_strfreev (names);
+    g_signal_connect (G_OBJECT (combo), "changed",
+                      G_CALLBACK (memo_combo_changed), NULL);
+    gtk_combo_box_set_active (GTK_COMBO_BOX (combo), 0);
+  }
   
   {
     GtkTextTagTable *table;
@@ -883,13 +962,15 @@ memo_create_window (void)
 int 
 main (void)
 {
+  config_init ();
   memo_db_init ();
 
   gtk_init(NULL, NULL);
   memo_create_window ();
   gtk_main ();
   memo_db_cleanup ();
-
+  config_cleanup ();
+  
   return 0;
 }
 
