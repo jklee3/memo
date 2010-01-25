@@ -1,6 +1,14 @@
 <?xml version="1.0" ?>
 
 <config>
-  <menu name="basic" key="00000000-000000"/> 
+  <menu name="basic" key="00000000-000000"/>
+  <menu name="office" key="00000000-000004"/>
+  <menu name="schedule" key="00000000-000007"/>
+  <menu name="personal" key="00000000-000006"/>
   <menu name="book" key="00000000-000001"/>
+  <menu name="man" key="00000000-000002"/>
+  <menu name="keyword" key="00000000-000005"/>
+  <menu name="stock" key="00000000-000008"/>
+  <menu name="advise" key="00000000-000009"/>
+  <menu name="site" key="00000000-000010"/>
 </config>

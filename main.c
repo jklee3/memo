@@ -49,6 +49,7 @@ static GtkTextBuffer *memo_edit_buffer;
 static GtkTextBuffer *memo_main_edit_buffer;
 static GtkWidget *memo_tree_view;
 static GtkWidget *memo_button;
+static GtkWidget *memo_main_window;
 static GtkWidget *memo_swindow;
 static GtkWidget *memo_search_entry;
 
@@ -745,6 +746,116 @@ memo_combo_changed (GtkComboBox *combo, gpointer data)
   tuples_free (tuples);
 }
 
+static GtkTextBuffer *edit_buffer;
+
+static void
+memo_done_edit (GtkWidget *widget)
+{
+  GtkTextIter start, end;
+  gchar *str;
+
+  gtk_text_buffer_get_start_iter (GTK_TEXT_BUFFER (edit_buffer), &start);
+  gtk_text_buffer_get_end_iter (GTK_TEXT_BUFFER (edit_buffer), &end);
+
+  str = gtk_text_buffer_get_text (edit_buffer, &start, &end, TRUE);
+  if (str)
+    {
+      gtk_text_buffer_set_text (memo_edit_buffer, str, -1);
+    }
+
+  gtk_widget_destroy (widget);
+}
+
+static void
+memo_create_daily_text_view (void)
+{
+  GtkWidget *window;
+  GtkWidget *vbox, *textview;
+  gint response;
+
+  window = gtk_dialog_new_with_buttons ("Edit Daily Memo",
+                                        GTK_WINDOW (memo_main_window),
+  //                                      GTK_DIALOG_MODALESS,
+                                        GTK_DIALOG_DESTROY_WITH_PARENT,
+                                        GTK_STOCK_OK,
+                                        GTK_RESPONSE_OK,
+                                        NULL);
+  gtk_window_set_default_size (GTK_WINDOW (window), 600, 550);                                     
+  vbox = GTK_DIALOG (window)->vbox;
+  textview = gtk_text_view_new ();
+  gtk_widget_show (textview);
+  gtk_box_pack_start (GTK_BOX (vbox), textview, TRUE, TRUE, 0);
+
+  edit_buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (textview));
+  {
+    GtkTextIter start, end;
+    gchar *str;
+    
+    gtk_text_buffer_get_start_iter (GTK_TEXT_BUFFER (memo_edit_buffer), &start);
+    gtk_text_buffer_get_end_iter (GTK_TEXT_BUFFER (memo_edit_buffer), &end);
+
+    str = gtk_text_buffer_get_text (memo_edit_buffer, &start, &end, TRUE);
+    if (str)
+    {
+     gtk_text_buffer_set_text (edit_buffer, str, -1);
+     }
+  }
+  
+#if 0
+  response = gtk_dialog_run (GTK_DIALOG (window));
+  if (response == GTK_RESPONSE_OK)
+  {
+    {
+      GtkTextIter start, end;
+      gchar *str;
+
+      gtk_text_buffer_get_start_iter (GTK_TEXT_BUFFER (edit_buffer), &start);
+      gtk_text_buffer_get_end_iter (GTK_TEXT_BUFFER (edit_buffer), &end);
+
+      str = gtk_text_buffer_get_text (edit_buffer, &start, &end, TRUE);
+      if (str)
+         {
+           gtk_text_buffer_set_text (memo_edit_buffer, str, -1);
+         }
+
+
+    }
+
+    gtk_widget_destroy (window);
+  }
+#else
+  g_signal_connect_swapped (GTK_DIALOG (window),
+                            "response",
+                            G_CALLBACK (memo_done_edit),
+                            window);
+  gtk_widget_show_all (window);
+#endif  
+}
+
+static gboolean
+memo_text_view_button_press_event (GtkWidget *widget, GdkEventButton *event, gpointer data)
+{
+  switch (event->button)
+  {
+  case 1:
+    if (event->type == GDK_2BUTTON_PRESS)
+    {
+      memo_create_daily_text_view ();
+    }
+  break;
+  default:
+  break;
+  }
+
+  return FALSE;
+}
+
+static gboolean
+memo_text_view_button_release_event (GtkWidget *widget, GdkEventButton *event, gpointer data)
+{
+  return FALSE;
+}
+
 static void
 memo_create_window (void)
 {
@@ -761,6 +872,7 @@ memo_create_window (void)
   gtk_widget_set_name (window, "Memo");
   gtk_window_set_title (GTK_WINDOW (window), "Memo");
   gtk_widget_show (window);
+  memo_main_window = window;
 
   main_hbox = gtk_hbox_new (FALSE, 0);
   gtk_widget_show (main_hbox);
@@ -875,9 +987,14 @@ memo_create_window (void)
   text_view = gtk_text_view_new ();
   text_buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (text_view));
   memo_edit_buffer = text_buffer;
-  
+ 
+  g_signal_connect (G_OBJECT (text_view), "button-press-event",
+    G_CALLBACK (memo_text_view_button_press_event), NULL);
+  g_signal_connect (G_OBJECT (text_view), "button-release-event",
+    G_CALLBACK (memo_text_view_button_release_event), NULL);
+                      
   gtk_widget_show (text_view);
-  gtk_widget_set_size_request (text_view, 300, 300);
+  gtk_widget_set_size_request (text_view, 300, 400);
   gtk_box_pack_start (GTK_BOX (left_vbox), text_view, FALSE, FALSE, 0);
 
   button_box = gtk_hbox_new (FALSE, 0);
